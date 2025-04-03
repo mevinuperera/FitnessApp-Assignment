@@ -1,3 +1,4 @@
+import 'package:fitness_test/gender.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -169,7 +170,7 @@ class _LoginPageState extends State<LoginPage> {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) => const SignupPage(),
+                                      builder: (context) => const GenderScreen(),
                                     ),
                                   );
                                 },
