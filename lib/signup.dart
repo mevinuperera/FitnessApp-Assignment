@@ -148,7 +148,7 @@ class _SignupScreenState extends State<SignupScreen> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => GenderScreen(),
+                                  builder: (context) => LoginPage(),
                                 ),
                               );
                             },
@@ -226,7 +226,7 @@ class _SignupScreenState extends State<SignupScreen> {
           if (!mounted) return;
           Navigator.pushAndRemoveUntil(
             context,
-            MaterialPageRoute(builder: (context) => const HomePage()),
+            MaterialPageRoute(builder: (context) => const GenderScreen()),
             (route) => false, // Remove all previous routes
           );
         });

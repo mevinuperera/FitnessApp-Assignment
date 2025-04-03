@@ -1,3 +1,4 @@
+import 'package:fitness_test/login.dart';
 import 'package:flutter/material.dart';
 import 'components/bottom_navigation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -450,7 +451,9 @@ class _ProfileScreenState extends State<ProfileScreen1> {
       await _authService.signOut();
       // Navigate to login screen after sign out
       if (mounted) {
-        Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+        Navigator.of(context).pushReplacement(
+  MaterialPageRoute(builder: (context) => LoginPage()),
+);
       }
     } catch (e) {
       if (mounted) {
