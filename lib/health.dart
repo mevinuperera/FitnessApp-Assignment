@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'health2.dart';
 import 'health5.dart';
 import 'health7.dart';
+import 'components/bottom_navigation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'services/auth_services.dart';
 
 void main() {
   runApp(const MyApp());
@@ -14,10 +17,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Health Tips',
-      theme: ThemeData(
-        primarySwatch: Colors.brown,
-        fontFamily: 'Poppins',
-      ),
+      theme: ThemeData(primarySwatch: Colors.brown, fontFamily: 'Poppins'),
       home: const HealthScreen(),
     );
   }
@@ -53,17 +53,53 @@ class HealthScreen extends StatefulWidget {
 }
 
 class _HealthScreenState extends State<HealthScreen> {
-  int _selectedIndex = 0;
+  final AuthService _authService = AuthService();
+  String _userName = 'User';
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      Map<String, dynamic>? userData = await _authService.getUserData();
+
+      if (userData != null && userData.containsKey('fullName')) {
+        setState(() {
+          _userName = userData['fullName'];
+        });
+      } else {
+        // If no Firestore data, try to get display name from Firebase Auth
+        User? user = _authService.currentUser;
+        if (user != null &&
+            user.displayName != null &&
+            user.displayName!.isNotEmpty) {
+          setState(() {
+            _userName = user.displayName!;
+          });
+        }
+      }
+    } catch (e) {
+      print('Error loading user data: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
 
   static final List<HealthTipCard> healthTipCards = [
     const HealthTipCard(
       id: 1,
       title: [],
-      titlePositions: [
-        Offset(24, 10),
-        Offset(162, 29),
-        Offset(215, 51),
-      ],
+      titlePositions: [Offset(24, 10), Offset(162, 29), Offset(215, 51)],
       image: 'assets/pics/health.png',
       heading: 'Calculate your water Intake!',
       description:
@@ -73,10 +109,7 @@ class _HealthScreenState extends State<HealthScreen> {
     const HealthTipCard(
       id: 2,
       title: [],
-      titlePositions: [
-        Offset(24, 14),
-        Offset(191, 36),
-      ],
+      titlePositions: [Offset(24, 14), Offset(191, 36)],
       image: 'assets/pics/health1.png',
       heading: 'Calculate your body fat!',
       description:
@@ -86,11 +119,7 @@ class _HealthScreenState extends State<HealthScreen> {
     const HealthTipCard(
       id: 3,
       title: [],
-      titlePositions: [
-        Offset(0, 0),
-        Offset(1, 29),
-        Offset(3, 58),
-      ],
+      titlePositions: [Offset(0, 0), Offset(1, 29), Offset(3, 58)],
       image: 'assets/pics/health2.png',
       heading: 'Checkout Recommended Diet plans',
       description:
@@ -104,16 +133,16 @@ class _HealthScreenState extends State<HealthScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFFFEEE8),
       body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const SizedBox(height: 40),
+                      const SizedBox(height: 20),
                       const Text(
                         'Health Tips!',
                         style: TextStyle(
@@ -122,88 +151,53 @@ class _HealthScreenState extends State<HealthScreen> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      RichText(
-                        text: const TextSpan(
-                          style: TextStyle(
-                            fontSize: 15,
-                            height: 0.98,
+                      _isLoading
+                          ? const SizedBox(
+                            width: 150,
+                            child: LinearProgressIndicator(
+                              backgroundColor: Color(0xFFFFEEE8),
+                              color: Color(0xFFB09489),
+                            ),
+                          )
+                          : RichText(
+                            text: TextSpan(
+                              style: const TextStyle(
+                                fontSize: 16,
+                                color: Colors.black,
+                              ),
+                              children: [
+                                const TextSpan(text: 'Hello '),
+                                TextSpan(
+                                  text: _userName,
+                                  style: const TextStyle(
+                                    color: Color(0xFFC47958),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const TextSpan(
+                                  text: ', you are on a 3 day streak!',
+                                ),
+                              ],
+                            ),
                           ),
-                          children: [
-                            TextSpan(
-                              text: 'You are on a ',
-                              style: TextStyle(color: Colors.black),
-                            ),
-                            TextSpan(
-                              text: '3 day',
-                              style: TextStyle(color: Color(0xFFC47958)),
-                            ),
-                            TextSpan(
-                              text: ' ',
-                              style: TextStyle(color: Color(0xFF909090)),
-                            ),
-                            TextSpan(
-                              text: 'Streak! Keep it up!',
-                              style: TextStyle(color: Colors.black),
-                            ),
-                          ],
-                        ),
-                      ),
                       const SizedBox(height: 32),
-                      ...healthTipCards.map((card) => Padding(
-                            padding: const EdgeInsets.only(bottom: 28),
-                            child: HealthTipCardWidget(card: card),
-                          )).toList(),
+                      ...healthTipCards
+                          .map(
+                            (card) => Padding(
+                              padding: const EdgeInsets.only(bottom: 28),
+                              child: HealthTipCardWidget(card: card),
+                            ),
+                          )
+                          .toList(),
                     ],
                   ),
                 ),
               ),
-            ),
-            BottomNavigationBarWidget(
-              selectedIndex: _selectedIndex,
-              onTap: (index) {
-                setState(() {
-                  _selectedIndex = index;
-                });
-                switch (index) {
-                  case 0:
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const HealthScreen()),
-                    );
-                    break;
-                  case 1:
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const StatsScreen()),
-                    );
-                    break;
-                  case 2:
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const WorkoutsScreen()),
-                    );
-                    break;
-                  case 3:
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const ProfileScreen()),
-                    );
-                    break;
-                }
-              },
-            ),
-            const SizedBox(height: 12),
-            Center(
-              child: Container(
-                width: 94,
-                height: 1,
-                color: Colors.black,
-              ),
-            ),
-            const SizedBox(height: 12),
-          ],
+            ],
+          ),
         ),
       ),
+      bottomNavigationBar: const BottomNavBar(currentIndex: 3),
     );
   }
 }
@@ -314,16 +308,16 @@ class HealthTipCardWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(30),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
       elevation: 4,
       child: Column(
         children: [
           SizedBox(
             height: 222,
             child: ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(30),
+              ),
               child: Stack(
                 children: [
                   Image.asset(
@@ -395,9 +389,7 @@ class HealthTipCardWidget extends StatelessWidget {
                         TextSpan(text: card.description),
                         const TextSpan(
                           text: '...Read more',
-                          style: TextStyle(
-                            color: Color(0xFFFE1600),
-                          ),
+                          style: TextStyle(color: Color(0xFFFE1600)),
                         ),
                       ],
                     ),
@@ -409,117 +401,5 @@ class HealthTipCardWidget extends StatelessWidget {
         ],
       ),
     );
-  }
-}
-
-// ====== BOTTOM NAVIGATION BAR (UNCHANGED) ======
-class BottomNavigationBarWidget extends StatelessWidget {
-  final int selectedIndex;
-  final ValueChanged<int> onTap;
-
-  const BottomNavigationBarWidget({
-    super.key,
-    required this.selectedIndex,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 53,
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      child: Stack(
-        children: [
-          Positioned(
-            top: 10,
-            left: 0,
-            right: 0,
-            child: Container(
-              height: 40,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-              ),
-            ),
-          ),
-          Positioned(
-            top: 0,
-            left: (MediaQuery.of(context).size.width - 32) / 5 * selectedIndex + 8,
-            child: Stack(
-              children: [
-                Image.asset(
-                  'assets/ellipse-120.png',
-                  width: 50,
-                  height: 25,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      width: 50,
-                      height: 50,
-                    );
-                  },
-                ),
-                Positioned(
-                  top: 6,
-                  left: 8,
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFB09489),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      _getIconForIndex(selectedIndex),
-                      color: Colors.white,
-                      size: 29,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(top: 13),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildNavItem(0, Icons.home_outlined),
-                _buildNavItem(1, Icons.analytics_outlined),
-                _buildNavItem(2, Icons.fitness_center_outlined),
-                const SizedBox(width: 26),
-                _buildNavItem(3, Icons.person_outline),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNavItem(int index, IconData icon) {
-    return GestureDetector(
-      onTap: () => onTap(index),
-      child: Icon(
-        icon,
-        size: 26,
-        color: selectedIndex == index ? Colors.black : Colors.grey,
-      ),
-    );
-  }
-
-  IconData _getIconForIndex(int index) {
-    switch (index) {
-      case 0:
-        return Icons.home_outlined;
-      case 1:
-        return Icons.analytics_outlined;
-      case 2:
-        return Icons.fitness_center_outlined;
-      case 3:
-        return Icons.monitor_heart_sharp;
-      default:
-        return Icons.favorite_border;
-    }
   }
 }

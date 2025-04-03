@@ -1,6 +1,9 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'signup.dart';
+import 'homepage.dart';
+import 'services/auth_services.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -10,9 +13,11 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final TextEditingController _fullNameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _obscureText = true;
+  bool _isLoading = false;
+  final AuthService _authService = AuthService();
 
   @override
   Widget build(BuildContext context) {
@@ -21,13 +26,16 @@ class _LoginPageState extends State<LoginPage> {
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 35.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+              vertical: 35.0,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Header
                 const Text(
-                  'Let’s Sign You In,',
+                  'Let\'s Sign You In,',
                   style: TextStyle(
                     fontFamily: 'Poppins',
                     fontSize: 24,
@@ -36,7 +44,7 @@ class _LoginPageState extends State<LoginPage> {
                 ),
                 const SizedBox(height: 5),
                 const Text(
-                  'Let’s level up your fitness journey.',
+                  'Let\'s level up your fitness journey.',
                   style: TextStyle(
                     fontFamily: 'Poppins',
                     fontSize: 15,
@@ -46,7 +54,11 @@ class _LoginPageState extends State<LoginPage> {
                 const SizedBox(height: 28),
 
                 // Email & Password Input Fields
-                _buildInputField(label: 'Full Name', controller: _fullNameController),
+                _buildInputField(
+                  label: 'Email',
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                ),
                 const SizedBox(height: 27),
                 _buildInputField(
                   label: 'Password',
@@ -58,7 +70,7 @@ class _LoginPageState extends State<LoginPage> {
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
-                    onPressed: () {},
+                    onPressed: _handleForgotPassword,
                     child: const Text(
                       'Forgot Password',
                       style: TextStyle(
@@ -76,21 +88,26 @@ class _LoginPageState extends State<LoginPage> {
                   width: double.infinity,
                   height: 62,
                   child: ElevatedButton(
-                    onPressed: () {},
+                    onPressed: _isLoading ? null : _handleSignIn,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFB09489),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                       ),
                     ),
-                    child: const Text(
-                      'SIGN IN',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontFamily: 'Poppins',
-                      ),
-                    ),
+                    child:
+                        _isLoading
+                            ? const CircularProgressIndicator(
+                              color: Colors.white,
+                            )
+                            : const Text(
+                              'SIGN IN',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 24,
+                                fontFamily: 'Poppins',
+                              ),
+                            ),
                   ),
                 ),
 
@@ -116,9 +133,15 @@ class _LoginPageState extends State<LoginPage> {
                 const SizedBox(height: 20),
 
                 // Social Login Buttons
-                _buildSocialLoginButton('assets/icons/google.png', 'Continue With GOOGLE'),
+                _buildSocialLoginButton(
+                  'assets/icons/google.png',
+                  'Continue With GOOGLE',
+                ),
                 const SizedBox(height: 16),
-                _buildSocialLoginButton('assets/icons/facebook.png', 'Continue With Facebook'),
+                _buildSocialLoginButton(
+                  'assets/icons/facebook.png',
+                  'Continue With Facebook',
+                ),
 
                 // Footer
                 const SizedBox(height: 32),
@@ -140,13 +163,16 @@ class _LoginPageState extends State<LoginPage> {
                             color: Color(0xFFB09489),
                             fontWeight: FontWeight.w500,
                           ),
-                          recognizer: TapGestureRecognizer()
-                            ..onTap = () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (context) => const SignupPage()),
-                              );
-                            },
+                          recognizer:
+                              TapGestureRecognizer()
+                                ..onTap = () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const SignupPage(),
+                                    ),
+                                  );
+                                },
                         ),
                       ],
                     ),
@@ -159,6 +185,119 @@ class _LoginPageState extends State<LoginPage> {
         ),
       ),
     );
+  }
+
+  Future<void> _handleSignIn() async {
+    String email = _emailController.text.trim();
+    String password = _passwordController.text.trim();
+
+    // Validate inputs
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter both email and password'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      UserCredential userCredential = await _authService
+          .signInWithEmailAndPassword(email: email, password: password);
+
+      // Only navigate if login was successful
+      if (userCredential.user != null) {
+        // Show success message
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Login successful!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        // Navigate after a brief delay to show the success message
+        Future.delayed(const Duration(milliseconds: 1000), () {
+          if (!mounted) return;
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => const HomePage()),
+            (route) => false, // Remove all previous routes
+          );
+        });
+      }
+    } on FirebaseAuthException catch (e) {
+      String errorMessage = 'An error occurred during sign in';
+
+      if (e.code == 'user-not-found') {
+        errorMessage = 'No user found with this email';
+      } else if (e.code == 'wrong-password') {
+        errorMessage = 'Wrong password provided';
+      } else if (e.code == 'invalid-email') {
+        errorMessage = 'The email address is not valid';
+      } else if (e.code == 'network-request-failed') {
+        errorMessage = 'Network error. Please check your internet connection';
+      } else if (e.code == 'too-many-requests') {
+        errorMessage = 'Too many failed login attempts. Please try again later';
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _handleForgotPassword() async {
+    String email = _emailController.text.trim();
+
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter your email address'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    try {
+      await _authService.sendPasswordResetEmail(email);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Password reset email sent. Please check your inbox.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   Widget _buildInputField({
@@ -174,10 +313,7 @@ class _LoginPageState extends State<LoginPage> {
           padding: const EdgeInsets.only(left: 16, bottom: 4),
           child: Text(
             label,
-            style: const TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 13,
-            ),
+            style: const TextStyle(fontFamily: 'Poppins', fontSize: 13),
           ),
         ),
         TextField(
@@ -189,43 +325,46 @@ class _LoginPageState extends State<LoginPage> {
               borderRadius: BorderRadius.circular(20),
               borderSide: const BorderSide(
                 color: Color(0xFFB09489),
-                width: 2.5, // Increased border width
+                width: 2.5,
               ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(20),
               borderSide: const BorderSide(
                 color: Color(0xFFB09489),
-                width: 2.5, // Increased border width
+                width: 2.5,
               ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(20),
-              borderSide: const BorderSide(
-                color: Color(0xFFB09489),
-                width: 3, // Even thicker when focused
-              ),
+              borderSide: const BorderSide(color: Color(0xFFB09489), width: 3),
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 20,
+            ),
             hintText: isPassword ? '******************' : '',
             hintStyle: const TextStyle(
               color: Color(0xFF909090),
               fontSize: 15,
               fontFamily: 'Poppins',
             ),
-            suffixIcon: isPassword
-                ? IconButton(
-                    icon: Icon(
-                      _obscureText ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                      color: const Color(0xFF909090),
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _obscureText = !_obscureText;
-                      });
-                    },
-                  )
-                : null,
+            suffixIcon:
+                isPassword
+                    ? IconButton(
+                      icon: Icon(
+                        _obscureText
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
+                        color: const Color(0xFF909090),
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _obscureText = !_obscureText;
+                        });
+                      },
+                    )
+                    : null,
           ),
         ),
       ],
@@ -239,7 +378,9 @@ class _LoginPageState extends State<LoginPage> {
         borderRadius: BorderRadius.circular(20),
       ),
       child: TextButton(
-        onPressed: () {},
+        onPressed: () {
+          // Social login functionality not implemented as per requirements
+        },
         style: TextButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 24),
           shape: RoundedRectangleBorder(
@@ -249,11 +390,7 @@ class _LoginPageState extends State<LoginPage> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Image.asset(
-              asset,
-              width: 14,
-              height: 14,
-            ),
+            Image.asset(asset, width: 14, height: 14),
             const SizedBox(width: 8),
             Text(
               text,

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'homepage.dart';
+import 'components/bottom_navigation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'services/auth_services.dart';
 
 // Main Application Entry Point
 void main() {
@@ -25,8 +27,55 @@ class MyApp extends StatelessWidget {
 }
 
 // Main Exercise Page
-class ExercisePage extends StatelessWidget {
+class ExercisePage extends StatefulWidget {
   const ExercisePage({super.key});
+
+  @override
+  State<ExercisePage> createState() => _ExercisePageState();
+}
+
+class _ExercisePageState extends State<ExercisePage> {
+  final AuthService _authService = AuthService();
+  String _userName = 'User';
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      Map<String, dynamic>? userData = await _authService.getUserData();
+
+      if (userData != null && userData.containsKey('fullName')) {
+        setState(() {
+          _userName = userData['fullName'];
+        });
+      } else {
+        // If no Firestore data, try to get display name from Firebase Auth
+        User? user = _authService.currentUser;
+        if (user != null &&
+            user.displayName != null &&
+            user.displayName!.isNotEmpty) {
+          setState(() {
+            _userName = user.displayName!;
+          });
+        }
+      }
+    } catch (e) {
+      print('Error loading user data: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,22 +96,32 @@ class ExercisePage extends StatelessWidget {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        RichText(
-                          text: const TextSpan(
-                            style: TextStyle(
-                              fontSize: 24,
-                              color: Colors.black,
-                              fontFamily: 'Poppins',
-                            ),
-                            children: [
-                              TextSpan(text: 'Hello '),
-                              TextSpan(
-                                text: 'Ranil Wick',
-                                style: TextStyle(fontWeight: FontWeight.w500),
+                        _isLoading
+                            ? const SizedBox(
+                              width: 150,
+                              child: LinearProgressIndicator(
+                                backgroundColor: Color(0xFFFFEEE8),
+                                color: Color(0xFFB09489),
                               ),
-                            ],
-                          ),
-                        ),
+                            )
+                            : RichText(
+                              text: TextSpan(
+                                style: const TextStyle(
+                                  fontSize: 24,
+                                  color: Colors.black,
+                                  fontFamily: 'Poppins',
+                                ),
+                                children: [
+                                  const TextSpan(text: 'Hello '),
+                                  TextSpan(
+                                    text: _userName,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                         const SizedBox(height: 4),
                         RichText(
                           text: const TextSpan(
@@ -75,7 +134,9 @@ class ExercisePage extends StatelessWidget {
                               TextSpan(text: 'You are on a '),
                               TextSpan(
                                 text: '3 day',
-                                style: TextStyle(color: Color.fromARGB(255, 181, 67, 19)),
+                                style: TextStyle(
+                                  color: Color.fromARGB(255, 181, 67, 19),
+                                ),
                               ),
                               TextSpan(text: ' Streak! Keep it up!'),
                             ],
@@ -129,10 +190,7 @@ class ExercisePage extends StatelessWidget {
                     children: [
                       const Text(
                         'Daily Progress',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontFamily: 'Poppins',
-                        ),
+                        style: TextStyle(fontSize: 15, fontFamily: 'Poppins'),
                       ),
                       const SizedBox(height: 16),
                       Row(
@@ -157,7 +215,6 @@ class ExercisePage extends StatelessWidget {
                             ],
                           ),
                         ],
-
                       ),
                     ],
                   ),
@@ -166,10 +223,7 @@ class ExercisePage extends StatelessWidget {
                 // Browse By Area Section
                 const Text(
                   'Browse By Area',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontFamily: 'Poppins',
-                  ),
+                  style: TextStyle(fontSize: 16, fontFamily: 'Poppins'),
                 ),
                 const SizedBox(height: 8),
                 SingleChildScrollView(
@@ -225,83 +279,7 @@ class ExercisePage extends StatelessWidget {
         ),
       ),
       // Bottom Navigation Bar
-      bottomNavigationBar: Container(
-        height: 54,
-        margin: const EdgeInsets.only(
-          left: 16,
-          right: 16,
-          bottom: 16,
-        ),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const HomePage()),
-                );
-              },
-              child: const Icon(Icons.home_outlined),
-            ),
-            GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const AnalyticsPage()),
-                );
-              },
-              child: const Icon(Icons.bar_chart),
-            ),
-            GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const ExercisePage()),
-                );
-              },
-              child: Stack(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFB09489),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.fitness_center,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const FavoritesPage()),
-                );
-              },
-              child: const Icon(Icons.favorite_border),
-            ),
-            GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const ProfilePage()),
-                );
-              },
-              child: const Icon(Icons.person_outline),
-            ),
-          ],
-        ),
-      ),
+      bottomNavigationBar: const BottomNavBar(currentIndex: 2),
     );
   }
 
@@ -331,10 +309,7 @@ class ExercisePage extends StatelessWidget {
         children: [
           Text(
             title,
-            style: const TextStyle(
-              fontSize: 16,
-              fontFamily: 'Poppins',
-            ),
+            style: const TextStyle(fontSize: 16, fontFamily: 'Poppins'),
           ),
           const SizedBox(height: 8),
           Row(
@@ -434,10 +409,7 @@ class ExercisePage extends StatelessWidget {
               const SizedBox(width: 8),
               const Text(
                 'Calories',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontFamily: 'Poppins',
-                ),
+                style: TextStyle(fontSize: 15, fontFamily: 'Poppins'),
               ),
             ],
           ),
@@ -456,7 +428,9 @@ class ExercisePage extends StatelessWidget {
                       height: 80,
                       child: CircularProgressIndicator(
                         value: 0.75,
-                        valueColor: const AlwaysStoppedAnimation<Color>(Color.fromARGB(255, 235, 24, 8)),
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                          Color.fromARGB(255, 235, 24, 8),
+                        ),
                         strokeWidth: 20,
                         strokeCap: StrokeCap.round,
                       ),
@@ -505,19 +479,12 @@ class ExercisePage extends StatelessWidget {
                   color: color,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(
-                  icon,
-                  color: Colors.white,
-                  size: 16,
-                ),
+                child: Icon(icon, color: Colors.white, size: 16),
               ),
               const SizedBox(width: 8),
               Text(
                 title,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontFamily: 'Poppins',
-                ),
+                style: const TextStyle(fontSize: 15, fontFamily: 'Poppins'),
               ),
             ],
           ),
@@ -526,10 +493,7 @@ class ExercisePage extends StatelessWidget {
             padding: const EdgeInsets.only(left: 16),
             child: Text(
               value,
-              style: const TextStyle(
-                fontSize: 14,
-                fontFamily: 'Poppins',
-              ),
+              style: const TextStyle(fontSize: 14, fontFamily: 'Poppins'),
             ),
           ),
         ],
@@ -556,15 +520,16 @@ class ExercisePage extends StatelessWidget {
     );
   }
 
-  Widget _buildWorkoutImageCard(String title, String imagePath, {bool fullWidth = false}) {
+  Widget _buildWorkoutImageCard(
+    String title,
+    String imagePath, {
+    bool fullWidth = false,
+  }) {
     return Container(
       height: fullWidth ? 139 : 154,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
-        image: DecorationImage(
-          image: AssetImage(imagePath),
-          fit: BoxFit.cover,
-        ),
+        image: DecorationImage(image: AssetImage(imagePath), fit: BoxFit.cover),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.25),
@@ -595,7 +560,6 @@ class ExercisePage extends StatelessWidget {
     );
   }
 }
-
 
 class AnalyticsPage extends StatelessWidget {
   const AnalyticsPage({super.key});

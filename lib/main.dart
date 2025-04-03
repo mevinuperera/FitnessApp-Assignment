@@ -1,8 +1,20 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:fitness_test/firebase_options.dart';
 import 'package:flutter/material.dart';
 import 'welcome.dart';
 import 'signup.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    print('Firebase initialized successfully');
+  } catch (e) {
+    print('Error initializing Firebase: $e');
+    // Continue with the app, but Firebase functionality won't work
+  }
   runApp(const MyApp());
 }
 
@@ -21,7 +33,7 @@ class MyApp extends StatelessWidget {
       initialRoute: '/',
       routes: {
         '/': (context) => const WelcomeScreen(),
-        '/signup': (context) =>  SignupPage(),
+        '/signup': (context) => SignupPage(),
       },
     );
   }
@@ -32,13 +44,10 @@ class WelcomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Wait for 5 seconds before navigating to signup screen
     Future.delayed(const Duration(seconds: 9), () {
       Navigator.pushReplacementNamed(context, '/signup');
     });
 
-    return Scaffold(
-      body:  WelcomeAnimation(),
-    );
+    return Scaffold(body: WelcomeAnimation());
   }
 }

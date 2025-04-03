@@ -4,6 +4,9 @@ import 'workout.dart';
 import 'static.dart';
 import 'health.dart';
 import 'profile.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'services/auth_services.dart';
+import 'components/bottom_navigation.dart';
 
 void main() {
   runApp(const MyApp());
@@ -50,10 +53,7 @@ final List<Map<String, String>> workoutCards = [
 class WorkoutCard extends StatelessWidget {
   final Map<String, String> workout;
 
-  const WorkoutCard({
-    super.key,
-    required this.workout,
-  });
+  const WorkoutCard({super.key, required this.workout});
 
   @override
   Widget build(BuildContext context) {
@@ -97,7 +97,7 @@ class WorkoutCard extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-builder: (context) => WorkoutScreen(workout: workout),
+                        builder: (context) => WorkoutScreen(workout: workout),
                       ),
                     );
                   },
@@ -190,13 +190,7 @@ builder: (context) => WorkoutScreen(workout: workout),
         children: [
           Icon(icon, color: color, size: 24),
           const SizedBox(width: 4),
-          Text(
-            text,
-            style: TextStyle(
-              color: color,
-              fontSize: 12,
-            ),
-          ),
+          Text(text, style: TextStyle(color: color, fontSize: 12)),
         ],
       ),
     );
@@ -204,8 +198,55 @@ builder: (context) => WorkoutScreen(workout: workout),
 }
 
 // Home page widget
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  final AuthService _authService = AuthService();
+  String _userName = 'User';
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      Map<String, dynamic>? userData = await _authService.getUserData();
+
+      if (userData != null && userData.containsKey('fullName')) {
+        setState(() {
+          _userName = userData['fullName'];
+        });
+      } else {
+        // If no Firestore data, try to get display name from Firebase Auth
+        User? user = _authService.currentUser;
+        if (user != null &&
+            user.displayName != null &&
+            user.displayName!.isNotEmpty) {
+          setState(() {
+            _userName = user.displayName!;
+          });
+        }
+      }
+    } catch (e) {
+      print('Error loading user data: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -227,21 +268,31 @@ class HomePage extends StatelessWidget {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        RichText(
-                          text: const TextSpan(
-                            style: TextStyle(
-                              fontSize: 24,
-                              color: Colors.black,
-                            ),
-                            children: [
-                              TextSpan(text: 'Hello '),
-                              TextSpan(
-                                text: 'Ranil Wick',
-                                style: TextStyle(fontWeight: FontWeight.w500),
+                        _isLoading
+                            ? const SizedBox(
+                              width: 150,
+                              child: LinearProgressIndicator(
+                                backgroundColor: Color(0xFFFFEEE8),
+                                color: Color(0xFFB19589),
                               ),
-                            ],
-                          ),
-                        ),
+                            )
+                            : RichText(
+                              text: TextSpan(
+                                style: const TextStyle(
+                                  fontSize: 24,
+                                  color: Colors.black,
+                                ),
+                                children: [
+                                  const TextSpan(text: 'Hello '),
+                                  TextSpan(
+                                    text: _userName,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                         const Text(
                           'Good Morning!',
                           style: TextStyle(
@@ -312,8 +363,13 @@ class HomePage extends StatelessWidget {
                                 height: 93,
                                 child: CircularProgressIndicator(
                                   value: 0.2,
-                                  backgroundColor: const Color(0xFFFFEDE5).withOpacity(0.66),
-                                  valueColor: const AlwaysStoppedAnimation<Color>(Color.fromARGB(255, 235, 24, 8)),
+                                  backgroundColor: const Color(
+                                    0xFFFFEDE5,
+                                  ).withOpacity(0.66),
+                                  valueColor:
+                                      const AlwaysStoppedAnimation<Color>(
+                                        Color.fromARGB(255, 235, 24, 8),
+                                      ),
                                   strokeWidth: 16,
                                   strokeCap: StrokeCap.round,
                                 ),
@@ -339,10 +395,7 @@ class HomePage extends StatelessWidget {
                 // Start New Goal section
                 const Text(
                   'Start New Goal',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
 
                 const SizedBox(height: 20),
@@ -353,10 +406,11 @@ class HomePage extends StatelessWidget {
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
                     itemCount: workoutCards.length,
-                    itemBuilder: (context, index) => Padding(
-                      padding: const EdgeInsets.only(right: 16),
-                      child: WorkoutCard(workout: workoutCards[index]),
-                    ),
+                    itemBuilder:
+                        (context, index) => Padding(
+                          padding: const EdgeInsets.only(right: 16),
+                          child: WorkoutCard(workout: workoutCards[index]),
+                        ),
                   ),
                 ),
 
@@ -365,10 +419,7 @@ class HomePage extends StatelessWidget {
                 // New Meal plans section
                 const Text(
                   'New Meal plans',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
 
                 const SizedBox(height: 20),
@@ -379,10 +430,11 @@ class HomePage extends StatelessWidget {
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
                     itemCount: workoutCards.length,
-                    itemBuilder: (context, index) => Padding(
-                      padding: const EdgeInsets.only(right: 16),
-                      child: WorkoutCard(workout: workoutCards[index]),
-                    ),
+                    itemBuilder:
+                        (context, index) => Padding(
+                          padding: const EdgeInsets.only(right: 16),
+                          child: WorkoutCard(workout: workoutCards[index]),
+                        ),
                   ),
                 ),
               ],
@@ -392,88 +444,7 @@ class HomePage extends StatelessWidget {
       ),
 
       // Bottom Navigation Bar with Navigation
-      bottomNavigationBar: Container(
-        height: 54,
-        margin: const EdgeInsets.only(
-          left: 16,
-          right: 16,
-          bottom: 16,
-        ),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            // Home Icon
-            GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const HomePage()),
-                );
-              },
-              child: Stack(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFB09489),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.home_outlined,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Analytics Icon
-            GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const ProgressScreen()),
-                );
-              },
-              child: const Icon(Icons.bar_chart),
-            ),
-            // Fitness Icon
-            GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const ExercisePage()),
-                );
-              },
-              child: const Icon(Icons.fitness_center),
-            ),
-            // Favorites Icon
-            GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const HealthScreen()),
-                );
-              },
-              child: const Icon(Icons.favorite_border),
-            ),
-            // Profile Icon
-            GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => ProfileScreen1()),
-                );
-              },
-              child: const Icon(Icons.person_outline),
-            ),
-          ],
-        ),
-      ),
+      bottomNavigationBar: const BottomNavBar(currentIndex: 0),
     );
   }
 }
